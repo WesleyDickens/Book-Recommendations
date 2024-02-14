@@ -2,7 +2,7 @@ torch
 pandas
 numpy
 joblib
-sklearn
+scikit-learn
 os
 streamlit
 scipy
