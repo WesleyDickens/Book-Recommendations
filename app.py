@@ -1,108 +1,56 @@
+import streamlit as st
+import pandas as pd
+import joblib
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset, DataLoader
-import joblib
-import pandas as pd
-import streamlit as st
-
-cleaned_df = pd.read_csv('cleaned_df.csv')
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
+from sklearn.linear_model import Ridge
+import numpy as np
 import scipy.sparse as sp
-import torch
 
-def load_sparse_matrix_to_tensor(path):
-    # Load the sparse matrix from disk
-    sparse_matrix = sp.load_npz(path)
+# Assuming all necessary imports are done and classes/functions are defined
+
+# Load necessary data and models (adjust paths as necessary)
+@st.cache
+def load_data_and_models():
+    cleaned_df = pd.read_csv('cleaned_df.csv')
+    device = torch.device("cpu")
+    loaded_model = CollabFiltModel(num_users=cleaned_df['User_id'].nunique(),
+                                   num_items=cleaned_df['Title'].nunique()).to(device)
+    loaded_model.load_state_dict(torch.load('collab_filt_model_state_dict.pth', map_location=device))
+    loaded_model.eval()
     
-    # Convert the sparse matrix to a dense NumPy array
-    dense_array = sparse_matrix.toarray()
+    user_encoder = joblib.load('user_encoder.joblib')
+    item_encoder = joblib.load('item_encoder.joblib')
     
-    # Convert the dense NumPy array to a PyTorch tensor
-    tensor = torch.tensor(dense_array, dtype=torch.float)
+    item_embeddings = loaded_model.item_emb.weight.data.cpu().numpy()
     
-    return tensor
+    return cleaned_df, loaded_model, user_encoder, item_encoder, item_embeddings
 
-class CollabFiltModel(nn.Module):
-    def __init__(self, num_users, num_items, emb_size=100):
-        super().__init__()
-        self.user_emb = nn.Embedding(num_users, emb_size)
-        self.item_emb = nn.Embedding(num_items, emb_size)
-    
-    def forward(self, user, item):
-        user_emb = self.user_emb(user)
-        item_emb = self.item_emb(item)
-        return (user_emb * item_emb).sum(1)
-    
-loaded_model = CollabFiltModel(num_users=cleaned_df['User_id'].nunique(),
-                               num_items=cleaned_df['Title'].nunique()).to(device)
+cleaned_df, loaded_model, user_encoder, item_encoder, item_embeddings = load_data_and_models()
 
-# Load the model state dictionary
-loaded_model.load_state_dict(torch.load('collab_filt_model_state_dict.pth'))
-
-# Ensure to switch the model to evaluation mode
-loaded_model.eval()
-
-# Load the encoders
-user_encoder = joblib.load('user_encoder.joblib')
-item_encoder = joblib.load('item_encoder.joblib')
-
-loaded_model.eval()
-loaded_model.to('cpu') ## Faster
-
-# Extract item embeddings
-item_embeddings = loaded_model.item_emb.weight.data.cpu().numpy()
-
+# Filter genres
 filtered_df = cleaned_df[cleaned_df['categories'].isin(cleaned_df['categories'].value_counts()[cleaned_df['categories'].value_counts() > 20000].index)]
-
 unique_genres = filtered_df['categories'].unique()
 
-# Display the genres to the user
-st.write("Please choose a genre from the following list:")
-for i, genre in enumerate(unique_genres, 1):
-    print(f"{i}. {genre}")
+# Streamlit user interface for genre selection
+genre_choice = st.selectbox("Please choose a genre:", unique_genres)
 
-choice = int(st.number_input("Enter the number corresponding to your choice: ")) - 1  # Subtract 1 to match the list index
-
-genre_choice = unique_genres[choice]
-
-
-sample_titles = cleaned_df[cleaned_df['categories']==genre_choice]['Title'].sample(5).to_numpy()
-
+# Displaying sample titles for the selected genre for user to rate
+sample_titles = cleaned_df[cleaned_df['categories'] == genre_choice]['Title'].sample(5).to_numpy()
 decoded_titles = item_encoder.inverse_transform(sample_titles)
 
 user_ratings = {}
-st.write('Rate these books 1-5')
+st.write('Rate these books 1-5:')
 for title in decoded_titles:
-    score = st.number_input(f"{title}: ")
-
+    score = st.slider(f"{title}:", min_value=1, max_value=5, value=3)
     encoded_value = item_encoder.transform([title])[0]
-
     user_ratings[encoded_value] = float(score)
 
-from sklearn.linear_model import Ridge
-import numpy as np
+# Assuming your Ridge regression and recommendation logic is defined here
 
-# Prepare the data for ridge regression
-rated_item_indices = list(user_ratings.keys())
-X = item_embeddings[rated_item_indices]
-y = np.array(list(user_ratings.values()))
-
-# Fit the ridge regression model
-ridge_model = Ridge(alpha=1.0)
-ridge_model.fit(X, y)
-
-# The user's "embedding" is approximated by the coefficients
-user_preferences = ridge_model.coef_
-
-predicted_ratings = np.dot(item_embeddings, user_preferences)
-
-# Rank items by predicted rating, excluding already rated items
-recommended_indices = np.argsort(-predicted_ratings)
-top_recommendations = [index for index in recommended_indices if index not in rated_item_indices][:5]
-
-# Decode the top recommended item indices to original IDs
-top_recommended_item_ids = item_encoder.inverse_transform(top_recommendations)
-
-st.write(top_recommended_item_ids)
+# Display recommendations to the user
+st.write("We recommend the following titles based on your ratings:")
+for item_id in top_recommended_item_ids:
+    st.write(item_id)
