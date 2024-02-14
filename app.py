@@ -9,7 +9,17 @@ from sklearn.linear_model import Ridge
 import numpy as np
 import scipy.sparse as sp
 
-# Assuming all necessary imports are done and classes/functions are defined
+
+class CollabFiltModel(nn.Module):
+    def __init__(self, num_users, num_items, emb_size=100):
+        super().__init__()
+        self.user_emb = nn.Embedding(num_users, emb_size)
+        self.item_emb = nn.Embedding(num_items, emb_size)
+    
+    def forward(self, user, item):
+        user_emb = self.user_emb(user)
+        item_emb = self.item_emb(item)
+        return (user_emb * item_emb).sum(1)
 
 # Load necessary data and models (adjust paths as necessary)
 @st.cache
