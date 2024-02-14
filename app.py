@@ -32,7 +32,7 @@ class CollabFiltModel(nn.Module):
 # Load cleaned data
 @st.cache
 def load_data():
-    cleaned_df = pd.read_csv('cleaned_df.csv')
+    cleaned_df = pd.read_csv('Book-Recommendations/cleaned_df.csv')
     return cleaned_df
 
 cleaned_df = load_data()
