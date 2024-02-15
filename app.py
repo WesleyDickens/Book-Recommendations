@@ -1,72 +1,61 @@
 import streamlit as st
-import torch
-import torch.nn as nn
 import pandas as pd
 import numpy as np
-import joblib
+import torch
+import torch.nn as nn
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 
-# Define your collaborative filtering model
+# Define your collaborative filtering model here (assuming this is already provided)
 class CollabFiltModel(nn.Module):
-    def __init__(self, num_users, num_items, emb_size=100):
-        super().__init__()
-        self.user_emb = nn.Embedding(num_users, emb_size)
-        self.item_emb = nn.Embedding(num_items, emb_size)
+    # Your Collaborative Filtering Model's definition
 
-    def forward(self, user, item):
-        user_emb = self.user_emb(user)
-        item_emb = self.item_emb(item)
-        return (user_emb * item_emb).sum(1)
+# Function to train Ridge Regression model (for demonstration)
+def train_ridge_model(X, y):
+    model = Ridge(alpha=1.0)
+    model.fit(X, y)
+    return model
 
-# Load data and model
+# Load your dataset
 @st.cache(allow_output_mutation=True)
-def load_data_and_model():
-    # Load the dataset
-    cleaned_df = pd.read_csv('cleaned_df.csv')
-    device = torch.device('cpu')  # Change to 'cuda' if GPU is available
+def load_data():
+    cleaned_df = pd.read_csv('path/to/your/cleaned_df.csv')
+    # For the purpose of this example, assume `cleaned_df` has the necessary features and target variable for Ridge Regression
+    return cleaned_df
 
-    # Load label encoders
-    user_encoder = joblib.load('user_encoder.joblib')
-    item_encoder = joblib.load('item_encoder.joblib')
-
-    # Prepare model
-    num_users = len(user_encoder.classes_)
-    num_items = len(item_encoder.classes_)
-    model = CollabFiltModel(num_users, num_items).to(device)
-    model.load_state_dict(torch.load('collab_filt_model_state_dict.pth', map_location=device))
-    model.eval()
-
-    return cleaned_df, model, user_encoder, item_encoder
-
-# Function to make recommendations
-def make_recommendations(model, genre, cleaned_df, user_encoder, item_encoder, num_recommendations=5):
-    # Filter books by genre if not 'All genres'
-    if genre != 'All genres':
-        genre_books = cleaned_df[cleaned_df['categories'] == genre]
-    else:
-        genre_books = cleaned_df
-
-    # Here, you should implement your logic to select items based on the model's predictions
-    # For simplicity, this example randomly selects books
-    recommendations = genre_books.sample(n=num_recommendations)
-
-    return recommendations[['Title', 'categories']]
-
-# Streamlit application
+# Streamlit UI
 def main():
-    st.title("Book Recommendation System")
+    st.title('Book Recommendation System')
+    
+    cleaned_df = load_data()
 
-    cleaned_df, model, user_encoder, item_encoder = load_data_and_model()
+    # Assuming `features` and `target` columns are in your dataframe for Ridge Regression
+    # This is a simplistic example for demonstration
+    X = cleaned_df[['feature1', 'feature2']]  # Replace with your actual feature columns
+    y = cleaned_df['target']  # Replace with your actual target column
 
-    genres = ['All genres'] + sorted(cleaned_df['categories'].unique().tolist())
-    selected_genre = st.selectbox("Select a genre for recommendations:", genres)
+    # Train Ridge Regression model
+    ridge_model = train_ridge_model(X, y)
 
-    if st.button("Recommend Books"):
-        recommendations = make_recommendations(model, selected_genre, cleaned_df, user_encoder, item_encoder)
-        st.write("Here are your recommendations:")
-        st.dataframe(recommendations)
+    # Genre selection UI
+    genre_options = ['Select a Genre'] + sorted(cleaned_df['genre_column'].unique().tolist())  # Replace 'genre_column' with actual
+    selected_genre = st.selectbox("Genre", genre_options)
+
+    if st.button('Recommend Books'):
+        # Placeholder for using the Ridge model in your recommendation logic
+        # For example, predict ratings for books in the selected genre and display top-rated books
+        if selected_genre != 'Select a Genre':
+            genre_books = cleaned_df[cleaned_df['genre_column'] == selected_genre]  # Filter books by selected genre
+            # Example prediction (ensure your model and data match in dimensions and preprocessing)
+            predicted_ratings = ridge_model.predict(genre_books[['feature1', 'feature2']])
+            genre_books['predicted_rating'] = predicted_ratings
+            top_recommendations = genre_books.nlargest(5, 'predicted_rating')  # Top 5 books
+            
+            st.write("Top Recommendations:")
+            st.dataframe(top_recommendations)
 
 if __name__ == "__main__":
     main()
-    
-    
-st.write("Here are your recommendations:")
+
+st.write("Top Recommendations:")
