@@ -1,7 +1,8 @@
 import streamlit as st
 import torch
 import torch.nn as nn
-from sklearn.preprocessing import LabelEncoder, Ridge
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import Ridge
 from torch.utils.data import Dataset, DataLoader
 import joblib
 import pandas as pd
