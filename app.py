@@ -17,7 +17,7 @@ import os
 # Load data and models
 
 def load_data():
-    cleaned_df = pd.read_csv('/mount/src/book-recommendations/cleaned_df')
+    cleaned_df = pd.read_csv('/mount/src/book-recommendations/cleaned_df.csv')
     user_encoder = joblib.load('/mount/src/book-recommendations/user_encoder.joblib')
     item_encoder = joblib.load('/mount/src/book-recommendations/item_encoder.joblib')
     return cleaned_df, user_encoder, item_encoder
