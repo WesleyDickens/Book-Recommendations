@@ -8,11 +8,12 @@ import joblib
 import pandas as pd
 import scipy.sparse as sp
 import numpy as np
+import os
 
 # Load data and models
 @st.cache
 def load_data():
-    cleaned_df = pd.read_csv('Book-Recommendations/blob/main/cleaned_df.csv')
+#     cleaned_df = pd.read_csv('cleaned_df.csv')
     user_encoder = joblib.load('user_encoder.joblib')
     item_encoder = joblib.load('item_encoder.joblib')
     return cleaned_df, user_encoder, item_encoder
