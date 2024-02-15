@@ -12,9 +12,9 @@ import numpy as np
 # Load data and models
 @st.cache
 def load_data():
-    cleaned_df = pd.read_csv('/cleaned_df.csv')
-    user_encoder = joblib.load('/user_encoder.joblib')
-    item_encoder = joblib.load('/item_encoder.joblib')
+    cleaned_df = pd.read_csv('cleaned_df.csv')
+    user_encoder = joblib.load('user_encoder.joblib')
+    item_encoder = joblib.load('item_encoder.joblib')
     return cleaned_df, user_encoder, item_encoder
 
 cleaned_df, user_encoder, item_encoder = load_data()
@@ -36,7 +36,7 @@ class CollabFiltModel(nn.Module):
 def load_model():
     model = CollabFiltModel(num_users=cleaned_df['User_id'].nunique(),
                             num_items=cleaned_df['Title'].nunique()).to(device)
-    model.load_state_dict(torch.load('/collab_filt_model_state_dict.pth', map_location=device))
+    model.load_state_dict(torch.load('collab_filt_model_state_dict.pth', map_location=device))
     model.eval()
     return model
 
